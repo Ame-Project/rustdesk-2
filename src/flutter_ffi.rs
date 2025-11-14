@@ -70,6 +70,10 @@ fn initialize(app_dir: &str, custom_client_config: &str) {
         init_from_env(Env::default().filter_or(DEFAULT_FILTER_ENV, "debug"));
         crate::common::test_nat_type();
     }
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    {
+        let _ = crate::common::global_init();
+    }
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
         // core_main's init_log does not work for flutter since it is only applied to its load_library in main.c
@@ -248,6 +252,10 @@ pub fn session_get_enable_trusted_devices(session_id: SessionID) -> SyncReturn<b
         false
     };
     SyncReturn(v)
+}
+
+pub fn will_session_close_close_session(session_id: SessionID) -> SyncReturn<bool> {
+    SyncReturn(sessions::would_remove_peer_by_session_id(&session_id))
 }
 
 pub fn session_close(session_id: SessionID) {
@@ -1770,6 +1778,36 @@ pub fn session_get_audit_server_sync(session_id: SessionID, typ: String) -> Sync
 pub fn session_send_note(session_id: SessionID, note: String) {
     if let Some(session) = sessions::get_session_by_session_id(&session_id) {
         session.send_note(note)
+    }
+}
+
+pub fn session_get_last_audit_note(session_id: SessionID) -> SyncReturn<String> {
+    if let Some(session) = sessions::get_session_by_session_id(&session_id) {
+        SyncReturn(session.last_audit_note.lock().unwrap().clone())
+    } else {
+        SyncReturn("".to_owned())
+    }
+}
+
+pub fn session_set_audit_guid(session_id: SessionID, guid: String) {
+    if let Some(session) = sessions::get_session_by_session_id(&session_id) {
+        *session.audit_guid.lock().unwrap() = guid;
+    }
+}
+
+pub fn session_get_audit_guid(session_id: SessionID) -> SyncReturn<String> {
+    if let Some(session) = sessions::get_session_by_session_id(&session_id) {
+        SyncReturn(session.audit_guid.lock().unwrap().clone())
+    } else {
+        SyncReturn("".to_owned())
+    }
+}
+
+pub fn session_get_conn_session_id(session_id: SessionID) -> SyncReturn<String> {
+    if let Some(session) = sessions::get_session_by_session_id(&session_id) {
+        SyncReturn(session.lc.read().unwrap().session_id.to_string())
+    } else {
+        SyncReturn("".to_owned())
     }
 }
 
